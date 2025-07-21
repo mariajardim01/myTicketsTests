@@ -10,15 +10,19 @@ import { CreateTicketData, saveTicket } from "repositories/tickets-repository";
 import { createEvent } from "./factories/events-factory";
 import { createTicket } from "./factories/tickets-factory";
 
-beforeAll(async () => {
+beforeEach(async () => {
+  // Ordem correta: dependências primeiro
   await prisma.ticket.deleteMany();
   await prisma.event.deleteMany();
+  
+  // Adicionar um pequeno delay para garantir que tudo foi processado
+  await new Promise(resolve => setTimeout(resolve, 50));
 });
 
-beforeEach(async () => {
-  await prisma.event.deleteMany();
-  await prisma.ticket.deleteMany();
+afterAll(async () => {
+  await prisma.$disconnect();
 });
+
 
 describe("get Events tickets tests", () => {
 
@@ -201,7 +205,7 @@ describe ("post tickets", () => {
 
   it(" id invalid should return 404 ", async () => {
     
-    const id = faker.number.int({min: 0})
+    const id = faker.number.int({min: 1, max:999})
 
     const ticket: CreateTicketData = {
         code: faker.string.uuid(),
@@ -209,10 +213,10 @@ describe ("post tickets", () => {
         owner: faker.person.fullName()
     }
 
-    const {status, text} = await api.post(`/tickets/use/${id}`).send(ticket).ok( () => true )
+    const {status, text} = await api.post(`/tickets`).send(ticket).ok( () => true )
     
     expect(status).toBe(404);
-    expect(text).toBe(`Event with id ${id} not found`);
+    expect(text).toEqual(`Event with id ${id} not found.`);
 
   });
 

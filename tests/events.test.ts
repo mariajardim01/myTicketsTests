@@ -10,8 +10,16 @@ import { rejects } from "assert";
 import { createEvent } from "./factories/events-factory";
 
 beforeEach(async () => {
-  await prisma.event.deleteMany();
+  // Ordem correta: dependências primeiro
   await prisma.ticket.deleteMany();
+  await prisma.event.deleteMany();
+  
+  // Adicionar um pequeno delay para garantir que tudo foi processado
+  await new Promise(resolve => setTimeout(resolve, 50));
+});
+
+afterAll(async () => {
+  await prisma.$disconnect();
 });
 
 describe("get Events tests", () => {
