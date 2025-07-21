@@ -7,6 +7,7 @@ import { CreateEventData, saveEvent } from "repositories/events-repository";
 const api = supertest(app);
 import { faker } from "@faker-js/faker"
 import { rejects } from "assert";
+import { createEvent } from "./factories/events-factory";
 
 beforeEach(async () => {
   await prisma.event.deleteMany();
@@ -16,7 +17,7 @@ beforeEach(async () => {
 describe("get Events tests", () => {
 
   it("success case sloud return all events", async () => {
-    await saveEvent({date: faker.date.future() , name: faker.person.fullName()  } )
+    await createEvent()
    
     const {status, body} = await api.get("/events")
 
@@ -48,11 +49,12 @@ describe("get Events tests", () => {
   
 });
 
+
 describe("get Events by Id tests", () => {
 
   it("success case sloud return a event", async () => {
     
-    const result = await saveEvent({date: faker.date.future() , name: faker.person.fullName()  } )
+    const result = await createEvent()
    
     const {status, body} = await api.get(`/events/${result.id}`)
 
@@ -80,20 +82,26 @@ describe("get Events by Id tests", () => {
   });
 
   it("error case by Id not match any event sloud return a status 404", async () => {
-    
-    const id = faker.number.int({min: 0})
+   
+    const id = faker.number.int({min: 1, max: 2147483647})
    
     
-    const res = await api.get(`/events/${id}`).ok(() => true);
+    
+    await api
+    .get(`/events/${id}`)
+    .expect(404)
+    .expect(`Event with id ${id} not found.`);
+ 
 
-    expect(res.status).toBe(404);
-    expect(res.text).toBe(`Event with id ${id} not found`);
   });
+
+ 
 
 
   
 
 })
+
 
 describe("post Event tests", () => {
 
@@ -125,7 +133,7 @@ describe("post Event tests", () => {
    }
 
 
-   await api.post("/events").send(event)
+   await createEvent(event.name , event.date)
    const {status, text} = await api.post("/events").send(event).ok(() => true)
 
    expect(status).toBe(409)
@@ -149,10 +157,12 @@ describe("post Event tests", () => {
 
 })
 
+
+
 describe ("put Events tests", () => {
 
   it ("success put Event", async () =>  {
-     const eventOnDB = await saveEvent({date: faker.date.future() , name: faker.person.fullName()  } )
+     const eventOnDB = await  createEvent()
 
      const newEventData = {
           date: faker.date.future() , 
@@ -166,12 +176,13 @@ describe ("put Events tests", () => {
   })
 
   it ("error by name not unique", async () =>  {
-    await saveEvent({date: faker.date.future() , name: "Cinema na quarta"  } )
-     const eventOnDB = await saveEvent({date: faker.date.future() , name: faker.person.fullName()  } )
+    await createEvent("Cinema na quarta")
+    const eventOnDB = await createEvent("Cinema na sexta")
 
      const newEventData = {
-          date: faker.date.future() , 
-          name: "Cinema na quarta"
+      name: "Cinema na quarta",  
+      date: faker.date.future()  
+        
      }
 
     const {status,text} = await api.put(`/events/${eventOnDB.id}`).send(newEventData).ok(() => true)
@@ -199,24 +210,30 @@ describe ("put Events tests", () => {
   
   it("error case by Id not match any event sloud return a status 404", async () => {
     
-    const id = faker.number.int({min: 0})
+    const id = faker.number.int({min: 0, max: 999})
    
+    const newEventData = {
+          date: faker.date.future() , 
+          name: faker.person.fullName()
+     }
     
-    const res = await api.put(`/events/${id}`).ok(() => true);
+    const res = await api.put(`/events/${id}`).send(newEventData).ok(() => true);
 
     expect(res.status).toBe(404);
-    expect(res.text).toBe(`Event with id ${id} not found`);
+    expect(res.text).toBe(`Event with id ${id} not found.`);
   });
 
 
 
 })
 
+
+
 describe (" delete Events tests ", () => {
 
   it (" success should delete the event ", async () => {
 
-    const eventOnDB = await saveEvent({date: faker.date.future() , name: faker.person.fullName()  } )
+    const eventOnDB = await createEvent()
 
     const {status} = await api.delete(`/events/${eventOnDB.id}`)
     expect(status).toBe(204)
@@ -227,6 +244,7 @@ describe (" delete Events tests ", () => {
   it (" error by id invalid ", async () => {
 
     const id = faker.number.int({max: 0})
+    console.log("id: " , id)
 
     const {status,text} = await api.delete(`/events/${id}`).ok(() => true)
 
@@ -236,18 +254,18 @@ describe (" delete Events tests ", () => {
 
   })
 
-  it (" error by id invalid ", async () => {
+  it (" error by id not found ", async () => {
 
-    const id = faker.number.int({min: 0})
+    const id = faker.number.int({min: 1, max:999})
 
     const {status,text} = await api.delete(`/events/${id}`).ok(() => true)
 
     expect(status).toBe(404);
-    expect(text).toBe(`Event with id ${id} not found`);
+    expect(text).toBe(`Event with id ${id} not found.`);
     
 
   })
     
 
 
-})
+}) 
